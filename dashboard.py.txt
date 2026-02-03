@@ -1,0 +1,93 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+st.set_page_config(
+    page_title="Auto Excel Dashboard",
+    page_icon="📊",
+    layout="wide"
+)
+
+st.markdown("""
+<style>
+.title {font-size:38px;font-weight:800;color:#1f4e79;}
+.subtitle {font-size:18px;color:#555;}
+.kpi {
+    background:#f2f2f2;
+    padding:20px;
+    border-radius:15px;
+    text-align:center;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="title">📊 Auto Excel Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Upload any Excel file & get instant insights</div>', unsafe_allow_html=True)
+
+st.divider()
+
+file = st.file_uploader("Upload Excel File", type=["xlsx","xls"])
+
+if file:
+    try:
+        df = pd.read_excel(file)
+
+        st.success("File uploaded successfully")
+
+        st.subheader("Data Preview")
+        st.dataframe(df, use_container_width=True)
+
+        num_cols = df.select_dtypes(include=np.number).columns.tolist()
+        cat_cols = df.select_dtypes(exclude=np.number).columns.tolist()
+
+        if not num_cols:
+            st.warning("No numeric data found")
+        else:
+            st.subheader("Key Metrics")
+
+            total = df[num_cols].sum().sum()
+            avg = df[num_cols].mean().mean()
+            mx = df[num_cols].max().max()
+            mn = df[num_cols].min().min()
+
+            c1,c2,c3,c4 = st.columns(4)
+
+            c1.markdown(f"<div class='kpi'><h3>Total</h3><h2>{total:,.2f}</h2></div>", unsafe_allow_html=True)
+            c2.markdown(f"<div class='kpi'><h3>Average</h3><h2>{avg:,.2f}</h2></div>", unsafe_allow_html=True)
+            c3.markdown(f"<div class='kpi'><h3>Max</h3><h2>{mx:,.2f}</h2></div>", unsafe_allow_html=True)
+            c4.markdown(f"<div class='kpi'><h3>Min</h3><h2>{mn:,.2f}</h2></div>", unsafe_allow_html=True)
+
+            st.divider()
+
+            st.subheader("Charts")
+
+            num_col = st.selectbox("Select Numeric Column", num_cols)
+
+            fig, ax = plt.subplots()
+            ax.plot(df[num_col])
+            ax.set_title(f"{num_col} Trend")
+            st.pyplot(fig)
+
+            if cat_cols:
+                cat = st.selectbox("Group By (Optional)", ["None"] + cat_cols)
+                if cat != "None":
+                    grp = df.groupby(cat)[num_col].sum()
+
+                    fig2, ax2 = plt.subplots()
+                    grp.plot(kind="bar", ax=ax2)
+                    ax2.set_title(f"{num_col} by {cat}")
+                    st.pyplot(fig2)
+
+                    fig3, ax3 = plt.subplots()
+                    grp.plot(kind="pie", autopct="%1.1f%%", ax=ax3)
+                    ax3.set_ylabel("")
+                    st.pyplot(fig3)
+
+            st.subheader("Summary")
+            st.dataframe(df.describe(), use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error: {e}")
+else:
+    st.info("Upload an Excel file to continue")
